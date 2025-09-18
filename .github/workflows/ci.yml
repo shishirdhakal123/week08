@@ -1,0 +1,108 @@
+name: CI - Test, Build & Push (Backend + Frontend)
+
+on:
+  push:
+    branches: ["dev", "main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  test_backend:
+    name: Run backend tests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    services:
+      product_db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: products
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      order_db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orders
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+
+      - name: Set up Python
+        uses: actions/setup-python@82c7d5abeda8af2e3fa72ed1101aef1e7b5b50e3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          for req in backend/*/requirements.txt; do
+            echo "Installing $req"
+            pip install -r "$req"
+          done
+          pip install pytest httpx
+
+      - name: Run product_service tests
+        working-directory: backend/product_service
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: products
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        run: pytest tests --maxfail=1 --disable-warnings -q
+
+      - name: Run order_service tests
+        working-directory: backend/order_service
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5433
+          POSTGRES_DB: orders
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        run: pytest tests --maxfail=1 --disable-warnings -q
+
+  build_product_image:
+    name: Build & push product_service image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./backend/product_service
+      image_name: product_service
+
+  build_order_image:
+    name: Build & push order_service image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./backend/order_service
+      image_name: order_service
+
+  build_frontend_image:
+    name: Build & push frontend image
+    needs: test_backend
+    uses: ./.github/workflows/build_and_push.yml
+    with:
+      service_path: ./frontend
+      image_name: frontend
