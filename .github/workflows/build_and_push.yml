@@ -31,8 +31,13 @@ jobs:
 
       - name: Build & Push
         run: |
-          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ inputs.image_name }}:${{ github.sha }} ${{ inputs.service_path }}
-          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ inputs.image_name }}:${{ github.sha }}
+          IMAGE_NAME=${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ inputs.image_name }}
+          # Build images with SHA tag and latest
+          docker build -t $IMAGE_NAME:${{ github.sha }} ${{ inputs.service_path }}
+          docker build -t $IMAGE_NAME:latest ${{ inputs.service_path }}
+          # Push both tags
+          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:latest
 
       - name: Logout Azure
         if: always()
