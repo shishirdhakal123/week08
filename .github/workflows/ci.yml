@@ -90,6 +90,7 @@ jobs:
     with:
       service_path: ./backend/product_service
       image_name: product_service
+    secrets: inherit
 
   build_order_image:
     name: Build & push order_service image
@@ -98,6 +99,7 @@ jobs:
     with:
       service_path: ./backend/order_service
       image_name: order_service
+    secrets: inherit
 
   build_frontend_image:
     name: Build & push frontend image
@@ -106,3 +108,4 @@ jobs:
     with:
       service_path: ./frontend
       image_name: frontend
+    secrets: inherit
