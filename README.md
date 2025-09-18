@@ -1,5 +1,9 @@
 # Week 08 - Continuous Delivery (CD) to AKS with GitHub Actions
 
+# Dev Branch
+
+Dev Branch Demonstration
+
 This example demonstrates a robust Continuous Delivery (CD) pipeline using GitHub Actions to deploy your e-commerce microservices and frontend application to an Azure Kubernetes Service (AKS) cluster. Building upon Week 07's Continuous Integration (CI), this setup automates the final step of getting your tested Docker images from Azure Container Registry (ACR) onto your Kubernetes cluster.
 
 ## 🚀 Purpose
@@ -19,9 +23,9 @@ Before you begin, ensure you have the following:
 2. **Azure Service Principal:** Create new Service Principal.
 3. Add new role for service principal for resource group. **More detailes about this step will be provided in seminar. Make sure you join seminar for this**.
 4. **GitHub Repository Secrets:**
-    - In your GitHub repository, go to **Settings** > **Secrets and variables** > **Actions**.
-    - Click **New repository secret** for each:
-      - `AZURE_CREDENTIALS`: You need separate SP with Owner permission (As done in step 3).
+   - In your GitHub repository, go to **Settings** > **Secrets and variables** > **Actions**.
+   - Click **New repository secret** for each:
+     - `AZURE_CREDENTIALS`: You need separate SP with Owner permission (As done in step 3).
 
 ## 📝 Configuration Files
 
