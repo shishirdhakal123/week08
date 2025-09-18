@@ -39,15 +39,6 @@ jobs:
       - name: Set AKS context
         run: az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
 
-      - name: Attach ACR
-        env:
-          ACR_LOGIN_SERVER: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-        run: |
-          ACR_NAME=$(echo "$ACR_LOGIN_SERVER" | cut -d'.' -f1)
-          az aks update --name ${{ github.event.inputs.aks_cluster_name }} \
-                        --resource-group ${{ github.event.inputs.aks_resource_group }} \
-                        --attach-acr $ACR_NAME
-
       - name: Deploy backend infra
         run: |
           cd k8s/
@@ -103,8 +94,10 @@ jobs:
           az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }} ./frontend
           docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }}
-          cd k8s/
-          kubectl apply -f frontend.yaml
+
+      - name: Deploy frontend
+        run: |
+          kubectl set image deployment/frontend frontend-container=${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }} --namespace default
 
       - name: Logout Azure
         if: always()
