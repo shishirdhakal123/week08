@@ -12,15 +12,16 @@ on:
         required: true
         default: "clusterweek09"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy_backend:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
     timeout-minutes: 30
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
 
     outputs:
       product_ip: ${{ steps.get_product_ip.outputs.external_ip }}
@@ -39,7 +40,11 @@ jobs:
         run: az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
 
       - name: Attach ACR
-        run: az aks update --name ${{ github.event.inputs.aks_cluster_name }} --resource-group ${{ github.event.inputs.aks_resource_group }} --attach-acr ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+  run: |
+    ACR_NAME=$(echo "${{ secrets.AZURE_CONTAINER_REGISTRY }}" | cut -d'.' -f1)
+    az aks update --name ${{ github.event.inputs.aks_cluster_name }} \
+                  --resource-group ${{ github.event.inputs.aks_resource_group }} \
+                  --attach-acr $ACR_NAME
 
       - name: Deploy backend infra
         run: |
@@ -73,9 +78,6 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 30
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
 
     steps:
       - name: Checkout
