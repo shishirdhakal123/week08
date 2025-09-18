@@ -1,8 +1,6 @@
 name: CD - Deploy Backend then Frontend
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
     inputs:
       aks_resource_group:
@@ -54,4 +52,56 @@ jobs:
       - name: Deploy backend services
         run: |
           cd k8s/
-          ku
+          kubectl apply -f product-service.yaml
+          kubectl apply -f order-service.yaml
+
+      - name: Get product IP
+        id: get_product_ip
+        run: echo "external_ip=$(kubectl get service product-service-w08e1 -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_OUTPUT
+
+      - name: Get order IP
+        id: get_order_ip
+        run: echo "external_ip=$(kubectl get service order-service-w08e1 -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_OUTPUT
+
+      - name: Logout Azure
+        if: always()
+        run: az logout
+
+  deploy_frontend:
+    runs-on: ubuntu-22.04
+    needs: deploy_backend
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        run: az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
+
+      - name: Inject backend IPs into frontend
+        run: |
+          sed -i "s|_PRODUCT_API_URL_|http://${{ needs.deploy_backend.outputs.product_ip }}:8000|g" frontend/main.js
+          sed -i "s|_ORDER_API_URL_|http://${{ needs.deploy_backend.outputs.order_ip }}:8001|g" frontend/main.js
+
+      - name: Build & Push frontend
+        run: |
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }} ./frontend
+          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }}
+          cd k8s/
+          kubectl apply -f frontend.yaml
+
+      - name: Logout Azure
+        if: always()
+        run: az logout
