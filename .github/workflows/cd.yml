@@ -4,6 +4,15 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      aks_resource_group:
+        description: "Resource group of the AKS cluster"
+        required: true
+        default: "week09rg"
+      aks_cluster_name:
+        description: "AKS cluster name"
+        required: true
+        default: "clusterweek09"
 
 jobs:
   deploy_backend:
@@ -29,10 +38,10 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Set AKS context
-        run: az aks get-credentials --resource-group week08practicalrg --name week08practicalkubecls --overwrite-existing
+        run: az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
 
       - name: Attach ACR
-        run: az aks update --name week08practicalkubecls --resource-group week08practicalrg --attach-acr ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+        run: az aks update --name ${{ github.event.inputs.aks_cluster_name }} --resource-group ${{ github.event.inputs.aks_resource_group }} --attach-acr ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
       - name: Deploy backend infra
         run: |
@@ -80,7 +89,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Set AKS context
-        run: az aks get-credentials --resource-group week08practicalrg --name week08practicalkubecls --overwrite-existing
+        run: az aks get-credentials --resource-group ${{ github.event.inputs.aks_resource_group }} --name ${{ github.event.inputs.aks_cluster_name }} --overwrite-existing
 
       - name: Inject backend IPs into frontend
         run: |
